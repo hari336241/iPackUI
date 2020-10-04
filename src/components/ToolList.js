@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
 import List from '@material-ui/core/List';
@@ -13,10 +13,12 @@ import TableCell from '@material-ui/core/TableCell';
 import TableContainer from '@material-ui/core/TableContainer';
 import TableRow from '@material-ui/core/TableRow';
 import TextField from '@material-ui/core/TextField';
+import axios from 'axios';
 
 const useStyles = makeStyles((theme) => ({
   root: {
-    margin: 'auto',
+    marginRight: 'auto',
+    marginLeft: 'auto',
     height: '100',
   },
   paper: {
@@ -56,6 +58,28 @@ export default function ToolList() {
   const [checked, setChecked] = React.useState([]);
   const [left, setLeft] = React.useState(["Jenkins", "Nexus", "SonarQube", "Aquasec", "Docker", "Chef"]);
   const [right, setRight] = React.useState([]);
+  const [vmIpAddress, setVmIpAddress] = React.useState();
+  const [vmUserName , setVmUserName] = React.useState('');
+  const [vmPassword , setVmPassword] = React.useState('');
+  const [ipAddressError,setIpAddressError] = React.useState(false);
+  const [userError,setUserError] = React.useState(false);
+  const [passwordError,setPasswordError] = React.useState(false);
+  const [ipErrorMessage,setIpErrorMessage] = React.useState('');
+  const [userErrorMessage , setUserErrorMessage] = React.useState('');
+  const [passwordErrorMessage , setPasswordErrorMessage] = React.useState('');
+  const [responseMessage,setResponseMessage] = React.useState('');
+  const [responseErrorMessage,setResponseErrorMessage] = React.useState('');
+  const [disabled,isDisabled] = useState(true);
+
+useEffect(() => {
+
+  console.log("in Use Effect")
+  if(vmIpAddress !== "" && vmUserName !== "" && vmPassword !== ""){
+    isDisabled(false)
+  }else{
+    isDisabled(true);
+  }
+})
 
   const leftChecked = intersection(checked, left);
   const rightChecked = intersection(checked, right);
@@ -120,6 +144,82 @@ export default function ToolList() {
     </Paper>
   );
 
+  const ipAddressChangeHandler = event => {
+
+    
+    let ipAddress = event.target.value;
+    console.log(ipAddress)
+    if(ipAddress.trim() === "" )
+    {
+      setIpAddressError(true);
+      setIpErrorMessage('IP Address should not be empty');
+      setVmIpAddress("");
+    }
+    else{
+      setIpAddressError(false)
+    setIpErrorMessage("")
+    setVmIpAddress(event.target.value);
+  }
+}
+
+  const vmUserNameChangeHandler = event => {
+
+    const username = event.target.value;
+    if(username.trim() === "" )
+    {
+      setUserError(true);
+      setUserErrorMessage('VM Username should not empty');
+      setVmUserName("");
+    }else {
+      setUserError(false);
+      setUserErrorMessage('');
+    setVmUserName(username);
+  }
+}
+
+  const vmPasswordChangeHandler = event => {
+    const password = event.target.value;
+    if(password.trim() === ""){
+      setPasswordError(true);
+      setPasswordErrorMessage('VM Password should not be empty');
+      setVmPassword("")
+    }else {
+      setPasswordError(false)
+      setPasswordErrorMessage('');
+      setVmPassword(password)
+    }
+
+
+  }
+
+  const createVM = () => {
+
+    const ipAddress = vmIpAddress;
+    const username = vmUserName;
+    const password = vmPassword;
+    const softwares = right;
+
+
+    console.log("Ip Address" , ipAddress , "username" , username , "Password" , password , "Softwares" , softwares);
+
+   
+    axios.post(`http://server/ClientIP=${vmIpAddress}&ClientUserName=${vmUserName}&ClientPwd=${vmPassword}&Softwares=${softwares}`).then(
+      response => {
+      console.log(response);
+      setVmIpAddress('');
+      setVmUserName('');
+      setVmPassword('');
+      setRight([]);
+      setLeft(["Jenkins", "Nexus", "SonarQube", "Aquasec", "Docker", "Chef"]);
+      setResponseMessage("VM Created Successfully")
+      }
+    ).catch(error => {
+      console.log(error);
+      setResponseErrorMessage("Unable create VM please try again")
+    })
+
+  }
+
   return (
     <Grid container spacing={6} className={classes.root}>
       <Grid item xs={8} md={8} lg={12}>
@@ -129,13 +229,49 @@ export default function ToolList() {
               <TableRow>
                 <TableCell align="right" >Enter VM IP Address</TableCell>
                 <TableCell align="right">
-                  <TextField id="outlined-basic" label="IP Address of VM" variant="outlined" />
+                  <TextField 
+                  error= {ipAddressError}
+                  id="outlined-basic" 
+                  label="IP Address of VM" 
+                  variant="outlined" 
+                  helperText={ipErrorMessage}
+                  onChange={event => ipAddressChangeHandler(event)}
+                  value={vmIpAddress}
+                  required/>
                 </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell align="right" >Enter VM UserName</TableCell>
+                <TableCell align="right">
+                  <TextField 
+                  error= {userError}
+                  id="outlined-basic" 
+                  label="VM UserName" 
+                  variant="outlined" 
+                  helperText={userErrorMessage}
+                  onChange={event => vmUserNameChangeHandler(event)}
+                  value={vmUserName}
+                  required/>
+                </TableCell>
+                <TableCell align="right" >Enter VM Password</TableCell>
+                <TableCell align="right">
+                  <TextField 
+                  error= {passwordError}
+                  id="outlined-basic" 
+                  label="VM Password" 
+                  variant="outlined" 
+                  helperText={passwordErrorMessage}
+                  onChange={event => vmPasswordChangeHandler(event)}
+                  value={vmPassword}
+                  required/>
+                </TableCell>              
               </TableRow>
             </Table>
           </TableContainer>
         </form>
       </Grid>
+  <p>{responseMessage}</p>
+  <p>{responseErrorMessage}</p>
       <Grid item>{customList(left)}</Grid>
       <Grid item>
         <Grid container direction="column" alignItems="center" >
@@ -163,7 +299,7 @@ export default function ToolList() {
         <form noValidate autoComplete="off">
           <Table aria-label="simple table">
             <TableRow align="right">
-              <Button variant="contained" color="primary" className={classes.button}> Create VM </Button>
+              <Button variant="contained" color="primary" className={classes.button} onClick={createVM} disabled={disabled}> Create VM </Button>
             </TableRow>
           </Table>
         </form>
